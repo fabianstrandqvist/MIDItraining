@@ -1,0 +1,10 @@
+# Build output
+build/
+cmake-build-*/
+
+# Tooling / editor caches
+.cache/
+compile_commands.json
+
+# Local symlink to JUCE modules (machine-specific; provide your own JUCE)
+modules
