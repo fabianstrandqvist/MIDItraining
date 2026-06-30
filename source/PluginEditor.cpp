@@ -30,14 +30,17 @@ namespace
     // NOTE: matching is exact, so an extended chord is only recognised when *every*
     // note is present (no omitted root/5th yet — that's tier 3). And chords with
     // identical pitch-class sets (e.g. C6 == Am7, Csus2 == Gsus4) can't be told
-    // apart without the bass note (tier 2), which is why 6th/sus chords are left
-    // out for now rather than fighting over the lowest root.
+    // apart without the bass note (tier 2). The "6" below is added so that
+    // collision exists to test bass-note disambiguation against; until that rule
+    // lands, first-match order decides (so {0,4,7,9} currently reads as a 6).
     constexpr ChordShape kChordShapes[] = {
         // triads
         { maskOf ({ 0, 4, 7 }),        "major"        },
         { maskOf ({ 0, 3, 7 }),        "minor"        },
         { maskOf ({ 0, 3, 6 }),        "diminished"   },
         { maskOf ({ 0, 4, 8 }),        "augmented"    },
+        // sixths — same pcs as the min7 a third below (C6 == Am7); bass decides
+        { maskOf ({ 0, 4, 7, 9 }),     "6"            },
         // sevenths
         { maskOf ({ 0, 4, 7, 10 }),    "dominant 7"   },
         { maskOf ({ 0, 4, 7, 11 }),    "major 7"      },
@@ -51,6 +54,9 @@ namespace
         { maskOf ({ 0, 2, 4, 5, 7, 11 }), "major 11"  },
     };
 
+    // need to add back all ambiguous chord shapes such as suspended etc. I will let Claude add this
+    // demo by adding one clashing chord
+
     // Result of trying to name what's being held.
     struct ChordMatch
     {
@@ -63,19 +69,18 @@ namespace
     {
       uint16_t chord = 0;
       juce::String val;
+      int bass;
     };
 
-    // Collapse the 128-note held state (low = notes 0..63, high = 64..127)
-    // into a single 12-bit pitch-class set, one bit per pitch class.
-    //
     // TODO: loop the 128 notes, test each bit in low/high, and for every held
     //       note set bit (note % 12) in the result.
     HeldChordNotes pitchClassSet (uint64_t low, uint64_t high)
     {
         uint16_t chord = 0;
         juce::String val;
+        int bass = -1; // it does not have to be a bitmap right - maybe?
 
-        for (int note = 0; note <= 127; ++note) 
+        for (int note = 0; note <= 127; ++note)
         {
             bool isHeld;
             if (note < 64)
@@ -85,11 +90,15 @@ namespace
 
             if (isHeld)
             {
+                if (bass == -1)
+                {
+                    bass = note % 12;
+                }
                 chord |= (1u << (note % 12)); // these are only the chord values, not shape yet
                 val += juce::MidiMessage::getMidiNoteName (note, true, true, 3) + " ";
             }
         }
-        return {chord, val};
+        return {chord, val, bass};
     }
 
     // Circular-rotate a 12-bit value left by `by` places, wrapping bits that
@@ -108,14 +117,16 @@ namespace
 
     }
 
-    // Match the pitch-class set against every chord shape at every root.
-    // Outer loop walks the dictionary in priority order; inner loop tries the
-    // 12 possible roots for that shape. First exact match wins.
-    ChordMatch identifyChord (uint16_t pcs)
+    // Match the pitch-class set against every chord shape at every root, and
+    // return the one whose root IS the bass note -- that's what separates C6 from
+    // Am7 when the notes are identical.
+    //
+    // Bug: Inversion do not work anymore
+    ChordMatch identifyChord (uint16_t pcs, int bass)
     {
         for (const auto& shape : kChordShapes)
             for (int root = 0; root < 12; ++root)
-                if (pcs == rotl12 (shape.bits, root))
+                if (pcs == rotl12 (shape.bits, root) && root == bass)
                     return { true, root, shape.name };
 
         return {};
@@ -154,13 +165,13 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
   g.setColour (juce::Colours::black);
   g.setFont (15.0f);
 
-  auto [pcs, val] = pitchClassSet (lastLow, lastHigh);
-  ChordMatch m = identifyChord (pcs);
+  auto [pcs, val, bass] = pitchClassSet (lastLow, lastHigh);
+  ChordMatch m = identifyChord (pcs, bass);
   if (m.found){
     val += " - " + juce::MidiMessage::getMidiNoteName (m.root, true, false, 3) + " " + m.name;
   }
   else if (val.isEmpty()){
-    
+
     val = "No note playing";
   }
   g.drawFittedText (val, 0, 0, getWidth(), 30, juce::Justification::centred, 1);
@@ -187,4 +198,3 @@ void AudioPluginAudioProcessorEditor::timerCallback()
     repaint();
   }
 }
-
