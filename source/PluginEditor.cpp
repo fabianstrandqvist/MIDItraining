@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include <iostream>
 #include "PluginEditor.h"
 
 //==============================================================================
@@ -124,10 +125,31 @@ namespace
     // Bug: Inversion do not work anymore
     ChordMatch identifyChord (uint16_t pcs, int bass)
     {
+        std::vector<ChordMatch> chords;
         for (const auto& shape : kChordShapes)
             for (int root = 0; root < 12; ++root)
-                if (pcs == rotl12 (shape.bits, root) && root == bass)
-                    return { true, root, shape.name };
+                if (pcs == rotl12 (shape.bits, root))
+                    //  && root == bass
+                    chords.push_back({true, root, shape.name});
+                    // it would be safe to continue now right since one chord should not match several transposes?
+
+        if (size(chords) == 1)
+        {
+            return chords[0];
+            // could add so slash chords exist
+        } else if (size(chords) != 0)
+        {
+            for (int i = 0; i < size(chords); ++i)
+            {
+                if (chords[i].root == bass){
+                    return chords[i];
+                }
+            }
+            // here comes the problem, a transposed normal chord will not work as the bass note must not be in line with ... note
+            // this is easy to solve if we only have one match but what if we have several, when could that be a problem?
+
+        }
+        //return { true, root, shape.name };
 
         return {};
     }
@@ -138,7 +160,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     : AudioProcessorEditor (&p), processorRef (p)
 {
 
-    setSize (200, 200);
+    setSize (500, 300);
 
     midiVolume.setSliderStyle (juce::Slider::LinearBarVertical);
     midiVolume.setRange (0.0, 127.0, 1.0);
@@ -148,8 +170,22 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     midiVolume.setValue (1.0);
 
     addAndMakeVisible (&midiVolume);
+    addAndMakeVisible (keyboard);
 
     midiVolume.addListener (this);
+
+    //// Adding ComboBox now, should it be put somewhere else?
+    addAndMakeVisible (scaleMenu);
+    scaleMenu.addItem ("Major", 1);
+    scaleMenu.addItem ("Minor", 2);
+    scaleMenu.onChange = [this] { menuChanged(); };
+    scaleMenu.setSelectedId (1);
+
+    addAndMakeVisible (rootMenu);
+    rootMenu.addItem ("C", 1);
+    rootMenu.addItem ("C#", 2);
+    rootMenu.onChange = [this] { menuChanged(); };
+    rootMenu.setSelectedId (1);
 
     startTimerHz (30);
 }
@@ -163,7 +199,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 {
   g.fillAll (juce::Colours::white);
   g.setColour (juce::Colours::black);
-  g.setFont (15.0f);
+  g.setFont (displayFont);
 
   auto [pcs, val, bass] = pitchClassSet (lastLow, lastHigh);
   ChordMatch m = identifyChord (pcs, bass);
@@ -180,6 +216,9 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 void AudioPluginAudioProcessorEditor::resized()
 {
     midiVolume.setBounds (40, 30, 20, getHeight() - 60);
+    keyboard.setBounds (0, getHeight() - 80, getWidth(), 80);
+    scaleMenu.setBounds (getWidth() - 100, 10, 90, 20);
+    rootMenu.setBounds (getWidth() - 100, 40, 90, 20);
 }
 
 void AudioPluginAudioProcessorEditor::sliderValueChanged (juce::Slider* slider){
@@ -197,4 +236,31 @@ void AudioPluginAudioProcessorEditor::timerCallback()
     lastHigh = stateHigh;
     repaint();
   }
+}
+
+// TODO: update displayFont based on scaleMenu selection
+// TODO: update rootMenu selection based on rootMenu selection
+// Obviosly needs a better way compared to having a case for each scale and root combination
+// This might actually mask great to the chordshapes I have already used before
+void AudioPluginAudioProcessorEditor::menuChanged()
+{
+    std::cout << "scale: " << scaleMenu.getSelectedId() << " root: " << rootMenu.getSelectedId() << std::endl;
+
+    scaleState = scaleMenu.getSelectedId();
+    rootState = rootMenu.getSelectedId();
+    scaleState = scaleState;
+    rootState = rootState;
+
+    // switch (scaleMenu.getSelectedId())
+    // {
+    //     case 1:
+    //         displayFont.setStyleFlags (juce::Font::plain);
+    //         break;
+    //     case 2:
+    //         displayFont.setStyleFlags (juce::Font::bold);
+    //         break;
+    //     default:
+    //         break;
+    // }
+    //displayLabel.setFont (displayFont);
 }

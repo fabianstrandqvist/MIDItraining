@@ -126,6 +126,14 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
+
+    // void processNextMidiBuffer (juce::MidiBuffer& buffer,
+    //                             int startSample,
+    //                             int numSamples,
+    //                             bool injectIndirectEvents);
+    //
+
+
     buffer.clear();
     for (const auto metadata : midiMessages)
     {
@@ -154,6 +162,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
       }
 
     }
+    keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), false);
 }
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const

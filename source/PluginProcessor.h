@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_audio_utils/juce_audio_utils.h>
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -49,11 +50,12 @@ public:
     uint64_t getStateHigh() const { return state_high.load(); }
 
     uint64_t getStateLow() const { return state_low.load(); }
+    juce::MidiKeyboardState keyboardState;
 
 private:
     //==============================================================================
     std::atomic<uint64_t> state_high { 0 };
-    
+
     std::atomic<uint64_t> state_low { 0 };
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };
