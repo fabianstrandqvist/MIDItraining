@@ -25,6 +25,13 @@ namespace
         const char* name;
     };
 
+    struct Scale
+    {
+        int      root = 0;
+        uint16_t    bits = 0;
+
+    }; // is this struct not pointless now, just bits would be enough for the highlights right?
+
     // The chord dictionary, written as interval formulas. The matcher returns the
     // first exact match, so order = priority.
     //
@@ -55,6 +62,11 @@ namespace
         { maskOf ({ 0, 2, 4, 5, 7, 11 }), "major 11"  },
     };
 
+    constexpr ChordShape kScales[] = {
+        { maskOf({ 0, 2, 4, 5, 7, 9, 11 }), "major" },
+        { maskOf({ 0, 2, 3, 5, 7, 8, 10 }), "minor" },
+    };
+
     // need to add back all ambiguous chord shapes such as suspended etc. I will let Claude add this
     // demo by adding one clashing chord
 
@@ -64,6 +76,7 @@ namespace
         bool        found = false;
         int         root  = 0;
         const char* name  = "";
+        int         slash = -1;
     };
 
     struct HeldChordNotes
@@ -132,11 +145,13 @@ namespace
                     //  && root == bass
                     chords.push_back({true, root, shape.name});
                     // it would be safe to continue now right since one chord should not match several transposes?
-
+        // could add so slash chords exist
         if (size(chords) == 1)
         {
+            if (chords[0].root != bass)
+                chords[0].slash = bass;
             return chords[0];
-            // could add so slash chords exist
+
         } else if (size(chords) != 0)
         {
             for (int i = 0; i < size(chords); ++i)
@@ -169,15 +184,15 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     midiVolume.setTextValueSuffix ("Volume");
     midiVolume.setValue (1.0);
 
-    addAndMakeVisible (&midiVolume);
-    addAndMakeVisible (keyboard);
+    // addAndMakeVisible (&midiVolume);
+    addAndMakeVisible (highlightKeyboard);
 
     midiVolume.addListener (this);
 
-    //// Adding ComboBox now, should it be put somewhere else?
+    // Demo ComboBoxes
     addAndMakeVisible (scaleMenu);
-    scaleMenu.addItem ("Major", 1);
-    scaleMenu.addItem ("Minor", 2);
+    scaleMenu.addItem ("major", 1);
+    scaleMenu.addItem ("minor", 2);
     scaleMenu.onChange = [this] { menuChanged(); };
     scaleMenu.setSelectedId (1);
 
@@ -205,6 +220,9 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
   ChordMatch m = identifyChord (pcs, bass);
   if (m.found){
     val += " - " + juce::MidiMessage::getMidiNoteName (m.root, true, false, 3) + " " + m.name;
+    if (m.slash != -1)
+      val += " / " + juce::MidiMessage::getMidiNoteName (m.slash, true, false, 3);
+
   }
   else if (val.isEmpty()){
 
@@ -216,7 +234,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 void AudioPluginAudioProcessorEditor::resized()
 {
     midiVolume.setBounds (40, 30, 20, getHeight() - 60);
-    keyboard.setBounds (0, getHeight() - 80, getWidth(), 80);
+    highlightKeyboard.setBounds (0, getHeight() - 80, getWidth(), 80);
     scaleMenu.setBounds (getWidth() - 100, 10, 90, 20);
     rootMenu.setBounds (getWidth() - 100, 40, 90, 20);
 }
@@ -240,16 +258,28 @@ void AudioPluginAudioProcessorEditor::timerCallback()
 
 // TODO: update displayFont based on scaleMenu selection
 // TODO: update rootMenu selection based on rootMenu selection
-// Obviosly needs a better way compared to having a case for each scale and root combination
+// Obviously needs a better way compared to having a case for each scale and root combination
 // This might actually mask great to the chordshapes I have already used before
+//
+// The information should be used in two ways:
+// 1. To inform ambiguous chord shapes
+// 2. To visually update the MIDI display and highlight scale relevant notes if possible
 void AudioPluginAudioProcessorEditor::menuChanged()
 {
     std::cout << "scale: " << scaleMenu.getSelectedId() << " root: " << rootMenu.getSelectedId() << std::endl;
 
-    scaleState = scaleMenu.getSelectedId();
-    rootState = rootMenu.getSelectedId();
-    scaleState = scaleState;
-    rootState = rootState;
+
+    glob_scale.root = rootMenu.getSelectedId() - 1;
+    glob_scale.bits = rotl12(kScales[scaleMenu.getSelectedId() - 1].bits, glob_scale.root);
+    highlightKeyboard.setHighlightScale(glob_scale.bits);
+
+
+    // maybe have the Scale struct as a current member instead of using scaleState and rootState directly
+
+    //scaleState = scaleState;
+    //rootState = rootState;
+    //
+
 
     // switch (scaleMenu.getSelectedId())
     // {
