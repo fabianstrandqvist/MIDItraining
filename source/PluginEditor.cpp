@@ -34,17 +34,13 @@ namespace
 
     // The chord dictionary, written as interval formulas. The matcher returns the
     // first exact match, so order = priority.
-    //
-    // NOTE: matching is exact, so an extended chord is only recognised when *every*
-    // note is present (no omitted root/5th yet — that's tier 3). And chords with
-    // identical pitch-class sets (e.g. C6 == Am7, Csus2 == Gsus4) can't be told
-    // apart without the bass note (tier 2). The "6" below is added so that
-    // collision exists to test bass-note disambiguation against; until that rule
-    // lands, first-match order decides (so {0,4,7,9} currently reads as a 6).
+    // TODO: Possibly a more dynamic approach, for example major 7, major 9 etc feels wasteful to have separate entries for
     constexpr ChordShape kChordShapes[] = {
         // triads
         { maskOf ({ 0, 4, 7 }),        "major"        },
         { maskOf ({ 0, 3, 7 }),        "minor"        },
+        { maskOf ({ 0, 2, 7 }), "sus2" },
+        { maskOf ({ 0, 5, 7 }), "sus4" },
         { maskOf ({ 0, 3, 6 }),        "diminished"   },
         { maskOf ({ 0, 4, 8 }),        "augmented"    },
         // sixths — same pcs as the min7 a third below (C6 == Am7); bass decides
@@ -136,7 +132,7 @@ namespace
     // Am7 when the notes are identical.
     //
     // Bug: Inversion do not work anymore
-    ChordMatch identifyChord (uint16_t pcs, int bass)
+    ChordMatch identifyChord (uint16_t pcs, int bass, int tonic)
     {
         std::vector<ChordMatch> chords;
         for (const auto& shape : kChordShapes)
@@ -145,7 +141,7 @@ namespace
                     //  && root == bass
                     chords.push_back({true, root, shape.name});
                     // it would be safe to continue now right since one chord should not match several transposes?
-        // could add so slash chords exist
+
         if (size(chords) == 1)
         {
             if (chords[0].root != bass)
@@ -154,14 +150,25 @@ namespace
 
         } else if (size(chords) != 0)
         {
+            std::vector<int> scores(size(chords));
             for (int i = 0; i < size(chords); ++i)
             {
+                scores[i] = 0;
                 if (chords[i].root == bass){
-                    return chords[i];
+                    // can also add slash maybe to visuals
+                    scores[i] += 2;
+                } else {
+                    chords[i].slash = bass;
+                }
+
+                if (chords[i].root == tonic)
+                {
+                    scores[i] += 1;
                 }
             }
-            // here comes the problem, a transposed normal chord will not work as the bass note must not be in line with ... note
-            // this is easy to solve if we only have one match but what if we have several, when could that be a problem?
+            int best = max_element(begin(scores), end(scores)) - begin(scores);
+
+            return chords[best];
 
         }
         //return { true, root, shape.name };
@@ -196,9 +203,12 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     scaleMenu.onChange = [this] { menuChanged(); };
     scaleMenu.setSelectedId (1);
 
+    static const juce::StringArray noteNames { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+
     addAndMakeVisible (rootMenu);
-    rootMenu.addItem ("C", 1);
-    rootMenu.addItem ("C#", 2);
+    for (int i = 0; i < noteNames.size(); ++i)
+        rootMenu.addItem (noteNames[i], i + 1); // JUCE menu IDs start at 1
+
     rootMenu.onChange = [this] { menuChanged(); };
     rootMenu.setSelectedId (1);
 
@@ -217,7 +227,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
   g.setFont (displayFont);
 
   auto [pcs, val, bass] = pitchClassSet (lastLow, lastHigh);
-  ChordMatch m = identifyChord (pcs, bass);
+  ChordMatch m = identifyChord (pcs, bass, glob_scale.root);
   if (m.found){
     val += " - " + juce::MidiMessage::getMidiNoteName (m.root, true, false, 3) + " " + m.name;
     if (m.slash != -1)
@@ -262,35 +272,11 @@ void AudioPluginAudioProcessorEditor::timerCallback()
 // This might actually mask great to the chordshapes I have already used before
 //
 // The information should be used in two ways:
-// 1. To inform ambiguous chord shapes
-// 2. To visually update the MIDI display and highlight scale relevant notes if possible
+// 1. To inform ambiguous chord shapes - not done
+// 2. To visually update the MIDI display and highlight scale relevant notes if possible - done
 void AudioPluginAudioProcessorEditor::menuChanged()
 {
-    std::cout << "scale: " << scaleMenu.getSelectedId() << " root: " << rootMenu.getSelectedId() << std::endl;
-
-
     glob_scale.root = rootMenu.getSelectedId() - 1;
     glob_scale.bits = rotl12(kScales[scaleMenu.getSelectedId() - 1].bits, glob_scale.root);
     highlightKeyboard.setHighlightScale(glob_scale.bits);
-
-
-    // maybe have the Scale struct as a current member instead of using scaleState and rootState directly
-
-    //scaleState = scaleState;
-    //rootState = rootState;
-    //
-
-
-    // switch (scaleMenu.getSelectedId())
-    // {
-    //     case 1:
-    //         displayFont.setStyleFlags (juce::Font::plain);
-    //         break;
-    //     case 2:
-    //         displayFont.setStyleFlags (juce::Font::bold);
-    //         break;
-    //     default:
-    //         break;
-    // }
-    //displayLabel.setFont (displayFont);
 }

@@ -8,7 +8,7 @@ void HighlightKeyboard::drawWhiteNote(int midiNoteNumber, juce::Graphics& g, juc
     juce::MidiKeyboardComponent::drawWhiteNote(midiNoteNumber, g, area, isDown, isOver, lineColour, textColour);
     juce::Colour c = juce::Colour::fromRGBA(255, 10, 205, 100);
 
-    if (scale & (1ULL << midiNoteNumber)) //bug since not mod12
+    if (scale & (1ULL << (midiNoteNumber % 12)))
     {
         g.setColour (c);
         g.fillRect (area);
@@ -22,6 +22,12 @@ void HighlightKeyboard::drawBlackNote(int midiNoteNumber, juce::Graphics& g, juc
                                                bool isDown, bool isOver, juce::Colour noteFillColour)
 {
     juce::MidiKeyboardComponent::drawBlackNote(midiNoteNumber, g, area, isDown, isOver, noteFillColour);
+
+    if (scale & (1ULL << (midiNoteNumber % 12)))
+    {
+        g.setColour (juce::Colour::fromRGBA(255, 10, 205, 100));
+        g.fillRect (area);
+    }
 }
 
 void HighlightKeyboard::setHighlightScale(uint16_t newScale)
