@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <sys/types.h>
 
 class HighlightKeyboard : public juce::MidiKeyboardComponent
 {
@@ -8,6 +9,8 @@ public:
     using juce::MidiKeyboardComponent::MidiKeyboardComponent;
 
     void setHighlightScale(uint16_t scale);
+
+    void setStampedChords(uint64_t low, uint64_t high);
 
 
 
@@ -20,6 +23,9 @@ private:
                                                bool isDown, bool isOver, juce::Colour noteFillColour) override;
 
     uint16_t scale = 0; // the initial state will be wrong but this is ok for now
+
+    uint64_t stampedLow = 0;
+    uint64_t stampedHigh = 0;
 
 
 

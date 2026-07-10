@@ -8,3 +8,6 @@ compile_commands.json
 
 # Local symlink to JUCE modules (machine-specific; provide your own JUCE)
 modules
+
+# Personal notes
+source/TODO.md

@@ -33,6 +33,8 @@ private:
     juce::MidiKeyboardComponent keyboard { processorRef.keyboardState,
                                            juce::MidiKeyboardComponent::horizontalKeyboard };
 
+
+
     HighlightKeyboard highlightKeyboard { processorRef.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard };
 
 
@@ -47,6 +49,11 @@ private:
 
     juce::ComboBox scaleMenu;
     juce::ComboBox rootMenu;
+    juce::TextButton stampButton { "Capture" };
+
+    juce::String currentChordName { "No note playing" };
+
+    void updateChordName();
 
     void menuChanged();
     juce::Font displayFont { 15.0f };

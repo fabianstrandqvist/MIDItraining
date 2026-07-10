@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <iostream>
 
 //==============================================================================
 juce::AudioProcessorValueTreeState::ParameterLayout AudioPluginAudioProcessor::createParameterLayout()
@@ -164,6 +165,13 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
     keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), false);
 }
+
+void AudioPluginAudioProcessor::notifyStamping(juce::String chordName)
+{
+    stampedChords.push_back({state_low, state_high, chordName});
+    std::cout << chordName << std::endl;
+}
+
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const
 {

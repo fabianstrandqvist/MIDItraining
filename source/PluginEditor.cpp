@@ -212,6 +212,11 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     rootMenu.onChange = [this] { menuChanged(); };
     rootMenu.setSelectedId (1);
 
+    addAndMakeVisible (stampButton);
+    stampButton.onClick = [this] { highlightKeyboard.setStampedChords (lastLow, lastHigh);
+        processorRef.notifyStamping(currentChordName);
+    };
+
     startTimerHz (30);
 }
 
@@ -226,19 +231,8 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
   g.setColour (juce::Colours::black);
   g.setFont (displayFont);
 
-  auto [pcs, val, bass] = pitchClassSet (lastLow, lastHigh);
-  ChordMatch m = identifyChord (pcs, bass, glob_scale.root);
-  if (m.found){
-    val += " - " + juce::MidiMessage::getMidiNoteName (m.root, true, false, 3) + " " + m.name;
-    if (m.slash != -1)
-      val += " / " + juce::MidiMessage::getMidiNoteName (m.slash, true, false, 3);
 
-  }
-  else if (val.isEmpty()){
-
-    val = "No note playing";
-  }
-  g.drawFittedText (val, 0, 0, getWidth(), 30, juce::Justification::centred, 1);
+  g.drawFittedText (currentChordName, 0, 0, getWidth(), 30, juce::Justification::centred, 1);
 }
 
 void AudioPluginAudioProcessorEditor::resized()
@@ -247,6 +241,7 @@ void AudioPluginAudioProcessorEditor::resized()
     highlightKeyboard.setBounds (0, getHeight() - 80, getWidth(), 80);
     scaleMenu.setBounds (getWidth() - 100, 10, 90, 20);
     rootMenu.setBounds (getWidth() - 100, 40, 90, 20);
+    stampButton.setBounds (getWidth() - 100, 70, 90, 20);
 }
 
 void AudioPluginAudioProcessorEditor::sliderValueChanged (juce::Slider* slider){
@@ -262,8 +257,29 @@ void AudioPluginAudioProcessorEditor::timerCallback()
   if (stateLow != lastLow || stateHigh != lastHigh){
     lastLow = stateLow;
     lastHigh = stateHigh;
-    repaint();
+
+    updateChordName();
+
   }
+}
+
+void AudioPluginAudioProcessorEditor::updateChordName()
+{
+    auto [pcs, val, bass] = pitchClassSet (lastLow, lastHigh);
+    ChordMatch m = identifyChord (pcs, bass, glob_scale.root);
+    if (m.found){
+      val += " - " + juce::MidiMessage::getMidiNoteName (m.root, true, false, 3) + " " + m.name;
+      if (m.slash != -1)
+        val += " / " + juce::MidiMessage::getMidiNoteName (m.slash, true, false, 3);
+
+    }
+    else if (val.isEmpty()){
+
+      val = "No note playing";
+    }
+
+    currentChordName = val;
+    repaint();
 }
 
 // TODO: update displayFont based on scaleMenu selection
@@ -279,4 +295,6 @@ void AudioPluginAudioProcessorEditor::menuChanged()
     glob_scale.root = rootMenu.getSelectedId() - 1;
     glob_scale.bits = rotl12(kScales[scaleMenu.getSelectedId() - 1].bits, glob_scale.root);
     highlightKeyboard.setHighlightScale(glob_scale.bits);
+
+    updateChordName();
 }
