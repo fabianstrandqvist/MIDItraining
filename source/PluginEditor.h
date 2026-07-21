@@ -44,18 +44,25 @@ private:
     uint16_t rootState = 0;
     uint16_t scaleState = 0;
 
-    // i think that these two could be switched out to a Scale struct variable
     Scale glob_scale {};
+
+    // should this necessarily be a juce::String?
+    juce::String sequence { "" };
 
     juce::ComboBox scaleMenu;
     juce::ComboBox rootMenu;
     juce::TextButton stampButton { "Capture" };
+    juce::TextButton clearButton { "Clear" };
+    juce::TextButton playButton { "Play" }; //should start the stamped sequence, highlighting the chord to be played
+
+    bool playMode = false;
+
 
     juce::String currentChordName { "No note playing" };
 
     void updateChordName();
-
     void menuChanged();
+
     juce::Font displayFont { 15.0f };
 
     juce::Slider midiVolume;

@@ -172,6 +172,40 @@ void AudioPluginAudioProcessor::notifyStamping(juce::String chordName)
     std::cout << chordName << std::endl;
 }
 
+juce::String AudioPluginAudioProcessor::getSequence() const
+{
+    juce::String sequence;
+
+    for (const auto& chord : stampedChords)
+    {
+        sequence += chord.name + " -> ";
+    }
+
+    return sequence;
+}
+
+StampedChord AudioPluginAudioProcessor::getStampedChord() const
+{
+    return stampedChords[currentChord];
+}
+
+void AudioPluginAudioProcessor::clearStamping()
+{
+    stampedChords.clear();
+}
+
+bool AudioPluginAudioProcessor::isChordCorrect(uint64_t stateLow, uint64_t stateHigh)
+{
+    if (stampedChords[currentChord].stateLow == stateLow && stampedChords[currentChord].stateHigh == stateHigh)
+    {
+        currentChord = (currentChord + 1) % stampedChords.size();
+
+        return true;
+    }
+    return false;
+}
+
+
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const
 {

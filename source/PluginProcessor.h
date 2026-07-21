@@ -63,6 +63,13 @@ public:
     juce::MidiKeyboardState keyboardState;
 
     void notifyStamping(juce::String chordName);
+    void clearStamping();
+
+    juce::String getSequence() const;
+    StampedChord getStampedChord() const;
+
+    bool isChordCorrect(uint64_t stateLow, uint64_t stateHigh);
+
 
 
 
@@ -73,5 +80,10 @@ private:
     std::atomic<uint64_t> state_low { 0 };
 
     std::vector<StampedChord> stampedChords;
+
+    int currentChord = 0;
+
+    // I guess that the playing sequence logic can be handled entirely in the editor since we have bitmaps and the target chord state
+    // Although need to be informed that play mode is on
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

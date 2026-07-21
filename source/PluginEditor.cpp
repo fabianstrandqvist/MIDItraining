@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include <fcntl.h>
 #include <iostream>
 #include "PluginEditor.h"
 
@@ -215,7 +216,21 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     addAndMakeVisible (stampButton);
     stampButton.onClick = [this] { highlightKeyboard.setStampedChords (lastLow, lastHigh);
         processorRef.notifyStamping(currentChordName);
+        repaint();
     };
+
+    addAndMakeVisible (clearButton);
+    clearButton.onClick = [this] { highlightKeyboard.setStampedChords (0, 0);
+        processorRef.clearStamping();
+        repaint();
+    };
+
+    addAndMakeVisible (playButton);
+    playButton.onClick = [this] { highlightKeyboard.setStampedChords(processorRef.getStampedChord().stateLow, processorRef.getStampedChord().stateHigh);
+        playMode = true;
+
+        repaint();
+    }; //is this dumb?
 
     startTimerHz (30);
 }
@@ -233,6 +248,9 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 
 
   g.drawFittedText (currentChordName, 0, 0, getWidth(), 30, juce::Justification::centred, 1);
+
+  g.drawFittedText (processorRef.getSequence(), 0, 30, getWidth(), 30, juce::Justification::centred, 1); // does stamping trigger a repaint anywhere?
+
 }
 
 void AudioPluginAudioProcessorEditor::resized()
@@ -242,6 +260,8 @@ void AudioPluginAudioProcessorEditor::resized()
     scaleMenu.setBounds (getWidth() - 100, 10, 90, 20);
     rootMenu.setBounds (getWidth() - 100, 40, 90, 20);
     stampButton.setBounds (getWidth() - 100, 70, 90, 20);
+    clearButton.setBounds (getWidth() - 100, 100, 90, 20);
+    playButton.setBounds (getWidth() - 100, 130, 90, 20);
 }
 
 void AudioPluginAudioProcessorEditor::sliderValueChanged (juce::Slider* slider){
@@ -253,12 +273,18 @@ void AudioPluginAudioProcessorEditor::timerCallback()
   auto stateLow = processorRef.getStateLow();
   auto stateHigh = processorRef.getStateHigh();
 
-
   if (stateLow != lastLow || stateHigh != lastHigh){
     lastLow = stateLow;
     lastHigh = stateHigh;
 
     updateChordName();
+
+    if (playMode){
+      if (processorRef.isChordCorrect(stateLow, stateHigh)){
+        highlightKeyboard.setStampedChords(processorRef.getStampedChord().stateLow, processorRef.getStampedChord().stateHigh);
+        // should have a better signifier for having played the correct chord
+      }
+    }
 
   }
 }
@@ -268,7 +294,7 @@ void AudioPluginAudioProcessorEditor::updateChordName()
     auto [pcs, val, bass] = pitchClassSet (lastLow, lastHigh);
     ChordMatch m = identifyChord (pcs, bass, glob_scale.root);
     if (m.found){
-      val += " - " + juce::MidiMessage::getMidiNoteName (m.root, true, false, 3) + " " + m.name;
+      val = juce::MidiMessage::getMidiNoteName (m.root, true, false, 3) + " " + m.name;
       if (m.slash != -1)
         val += " / " + juce::MidiMessage::getMidiNoteName (m.slash, true, false, 3);
 
