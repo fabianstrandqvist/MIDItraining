@@ -189,6 +189,20 @@ StampedChord AudioPluginAudioProcessor::getStampedChord() const
     return stampedChords[currentChord];
 }
 
+std::vector<std::pair<uint64_t, uint64_t>> AudioPluginAudioProcessor::getStampedChords() const
+{
+    std::vector<std::pair<uint64_t, uint64_t>> result;
+
+    for (const auto& chord : stampedChords)
+    {
+        result.emplace_back(chord.stateLow, chord.stateHigh);
+    }
+
+    return result;
+}
+
+
+
 void AudioPluginAudioProcessor::clearStamping()
 {
     stampedChords.clear();

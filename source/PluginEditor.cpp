@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include <execution>
 #include <fcntl.h>
 #include <iostream>
 #include "PluginEditor.h"
@@ -216,6 +217,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     addAndMakeVisible (stampButton);
     stampButton.onClick = [this] { highlightKeyboard.setStampedChords (lastLow, lastHigh);
         processorRef.notifyStamping(currentChordName);
+        sequence = processorRef.getSequence();
         repaint();
     };
 
@@ -231,6 +233,35 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
 
         repaint();
     }; //is this dumb?
+
+    addAndMakeVisible (saveButton);
+    saveButton.onClick = [this] {
+        juce::DynamicObject::Ptr root = new juce::DynamicObject();
+        root->setProperty ("format",  "miditraining.sequence");
+        root->setProperty ("version", 1);
+        root->setProperty ("root",    glob_scale.root);
+        root->setProperty ("bits",     glob_scale.bits); // should this be readable? it can not be manually written to right now
+        root->setProperty ("sequence", sequence);
+
+        auto enc_seq = processorRef.getStampedChords();
+        // build a juce::Array<var>, loop over chords,
+        // hex-stringify each low/high, push into the array
+        juce::Array<juce::var> enc_seq_array;
+        for (const auto& chord : enc_seq)
+        {
+            enc_seq_array.add(juce::var(juce::String::toHexString(chord.first)));
+            enc_seq_array.add(juce::var(juce::String::toHexString(chord.second)));
+        }
+        root->setProperty ("enc_sequence", enc_seq_array);
+
+        juce::var json (root.get());              // wrap the object in a var
+        DBG (juce::JSON::toString (json));
+
+
+    }; // try creating a JSON with something in it
+
+    addAndMakeVisible (loadButton);
+    loadButton.onClick = [this] {  };
 
     startTimerHz (30);
 }
@@ -249,7 +280,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 
   g.drawFittedText (currentChordName, 0, 0, getWidth(), 30, juce::Justification::centred, 1);
 
-  g.drawFittedText (processorRef.getSequence(), 0, 30, getWidth(), 30, juce::Justification::centred, 1); // does stamping trigger a repaint anywhere?
+  g.drawFittedText (sequence, 0, 30, getWidth(), 30, juce::Justification::centred, 1); // does stamping trigger a repaint anywhere?
 
 }
 
@@ -262,6 +293,8 @@ void AudioPluginAudioProcessorEditor::resized()
     stampButton.setBounds (getWidth() - 100, 70, 90, 20);
     clearButton.setBounds (getWidth() - 100, 100, 90, 20);
     playButton.setBounds (getWidth() - 100, 130, 90, 20);
+    saveButton.setBounds (getWidth() - 100, 160, 90, 20);
+    loadButton.setBounds (getWidth() - 100, 190, 90, 20);
 }
 
 void AudioPluginAudioProcessorEditor::sliderValueChanged (juce::Slider* slider){

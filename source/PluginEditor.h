@@ -3,6 +3,7 @@
 #include "PluginProcessor.h"
 #include "HighlightKeyboard.h"
 
+
 struct Scale
 {
     int root = 0;
@@ -53,7 +54,9 @@ private:
     juce::ComboBox rootMenu;
     juce::TextButton stampButton { "Capture" };
     juce::TextButton clearButton { "Clear" };
-    juce::TextButton playButton { "Play" }; //should start the stamped sequence, highlighting the chord to be played
+    juce::TextButton playButton { "Play" };
+    juce::TextButton saveButton { "Save" };
+    juce::TextButton loadButton { "Load" };
 
     bool playMode = false;
 

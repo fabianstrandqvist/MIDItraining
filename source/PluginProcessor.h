@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <sys/types.h>
 #include <vector>
 #include <utility>
 
@@ -67,6 +68,7 @@ public:
 
     juce::String getSequence() const;
     StampedChord getStampedChord() const;
+    std::vector<std::pair<uint64_t, uint64_t>> getStampedChords() const; // stupid naming
 
     bool isChordCorrect(uint64_t stateLow, uint64_t stateHigh);
 
@@ -80,6 +82,7 @@ private:
     std::atomic<uint64_t> state_low { 0 };
 
     std::vector<StampedChord> stampedChords;
+
 
     int currentChord = 0;
 
