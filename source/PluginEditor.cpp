@@ -232,7 +232,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
         playMode = true;
 
         repaint();
-    }; //is this dumb?
+    };
 
     addAndMakeVisible (saveButton);
     saveButton.onClick = [this] {
@@ -240,6 +240,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
         root->setProperty ("format",  "miditraining.sequence");
         root->setProperty ("version", 1);
         root->setProperty ("root",    glob_scale.root);
+        root->setProperty ("scale", scaleMenu.getSelectedId());
         root->setProperty ("bits",     glob_scale.bits); // should this be readable? it can not be manually written to right now
         root->setProperty ("sequence", sequence);
 
@@ -257,11 +258,70 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
         juce::var json (root.get());              // wrap the object in a var
         DBG (juce::JSON::toString (json));
 
+        // file saving
+        juce::File file("/home/fabianstrandqvist/AudioPlugins/MIDInerd/testseqsaving.txt");
+        if (file.exists())
+        {
+            juce::FileOutputStream saveStream(file);
+            if (!saveStream.openedOk())
+            {
+                return;
+            }
+            saveStream.writeText(juce::JSON::toString(json), false, false, "\n");
+            saveStream.flush();
 
-    }; // try creating a JSON with something in it
+        } else {
+            // should this open a save dialog or just create a file in bin location?
+            // needs a terminal to use the saving at the moment, make it possible in the UI
+        }
+
+
+    };
 
     addAndMakeVisible (loadButton);
-    loadButton.onClick = [this] {  };
+    loadButton.onClick = [this] {
+        juce::File file("/home/fabianstrandqvist/AudioPlugins/MIDInerd/testseqsaving.txt");
+        if (file.exists())
+        {
+            juce::FileInputStream loadStream(file);
+            if (!loadStream.openedOk())
+            {
+                return;
+            }
+            juce::String fileText = loadStream.readEntireStreamAsString(); //ok?
+            std::cout << fileText << std::endl;
+            auto json = juce::JSON::parse (fileText);
+            glob_scale.bits = static_cast<uint16_t> ((int) json["bits"]);
+            glob_scale.root = static_cast<int>       (json["root"]);
+
+            // changing highlight is fine but the menus do not update yet
+            highlightKeyboard.setHighlightScale(glob_scale.bits);
+            scaleMenu.setSelectedItemIndex(static_cast<int> (json["scale"]) - 1); // this does not follow the other states so not very clean
+            repaint();
+
+            rootMenu.setSelectedItemIndex(glob_scale.root);
+
+            processorRef.clearStamping();
+            auto* arr = json["enc_sequence"].getArray();
+            if (arr != nullptr)
+            {
+                for (int i = 0; i + 1 < arr->size(); i += 2)
+                {
+                    juce::String lowStr = (*arr)[i].toString();
+                    juce::String highStr = (*arr)[i + 1].toString();
+
+                    auto low = static_cast<uint64_t>((*arr)[i].toString().getHexValue64());
+                    auto high = static_cast<uint64_t>((*arr)[i + 1].toString().getHexValue64());
+
+                    processorRef.addStampedChord(low, high);
+                }
+                sequence = processorRef.getSequence();
+                repaint();
+
+            }
+
+        }
+    };
 
     startTimerHz (30);
 }

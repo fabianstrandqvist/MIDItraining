@@ -201,7 +201,10 @@ std::vector<std::pair<uint64_t, uint64_t>> AudioPluginAudioProcessor::getStamped
     return result;
 }
 
-
+void AudioPluginAudioProcessor::addStampedChord(uint64_t low, uint64_t high)
+{
+    stampedChords.emplace_back(low, high, "test");
+}
 
 void AudioPluginAudioProcessor::clearStamping()
 {

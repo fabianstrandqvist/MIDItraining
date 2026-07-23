@@ -69,6 +69,7 @@ public:
     juce::String getSequence() const;
     StampedChord getStampedChord() const;
     std::vector<std::pair<uint64_t, uint64_t>> getStampedChords() const; // stupid naming
+    void addStampedChord(uint64_t low, uint64_t high);
 
     bool isChordCorrect(uint64_t stateLow, uint64_t stateHigh);
 
