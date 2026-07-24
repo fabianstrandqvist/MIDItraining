@@ -58,6 +58,8 @@ private:
     juce::TextButton saveButton { "Save" };
     juce::TextButton loadButton { "Load" };
 
+    std::unique_ptr<juce::FileChooser> fileChooser;
+
     bool playMode = false;
 
 

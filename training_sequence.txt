@@ -1,0 +1,9 @@
+{
+  "format": "miditraining.sequence",
+  "version": 1,
+  "root": 11,
+  "scale": 2,
+  "bits": 2774,
+  "sequence": "",
+  "enc_sequence": []
+}

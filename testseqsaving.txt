@@ -13,4 +13,12 @@
     "89000000000000",
     "0"
   ]
+}{
+  "format": "miditraining.sequence",
+  "version": 1,
+  "root": 8,
+  "scale": 2,
+  "bits": 3418,
+  "sequence": "",
+  "enc_sequence": []
 }
